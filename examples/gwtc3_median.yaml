@@ -1,0 +1,31 @@
+# Fiducial Planck 2015 cosmological model used by LVK
+cosmo:
+  H_0: 67.9
+  Omega_m: 0.3
+  Omega_r: 0
+  Omega_l: 0.7
+  Omega_k: 0.0
+# *Median* values under GWTC-3 for each parameter
+redshift:
+  z_range: [1.e-5, 5]
+  T_yr: 10000
+  merger_rate_model: madau
+  merger_rate_params:
+    z_0: 0
+    R_0: 17.3
+    d: 2.7
+    z_peak: 2.04  # from MadauFragos'16
+    r: -3.6  # from MadauFragos'16
+mass:
+  m_range: [5.1, 86.9]
+  delta_m: 4.8
+  alpha: 3.40
+  lambda_peak: 0.039
+  mu_m: 33.7
+  sigma_m: 3.6
+  beta_q: 1.1
+spin: 
+  expected_a: 0.25
+  var_a: 0.03
+  zeta_spin: 0.66
+  sigma_t: 1.5

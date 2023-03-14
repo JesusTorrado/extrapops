@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "extrapops"
+authors = [
+  {name = "JesusTorrado"},
+]
+version = "0.9"
+description = "Phenomenological extragalactic binary populations and their LISA-band GW emission."
+readme = "README.rst"
+license = {text = "LGPL-3.0-or-later"}
+requires-python = ">=3.8"
+classifiers = [
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+keywords = ["extragalactic", "BBH", "black holes", "gravitational waves"]
+dependencies = [
+    "numpy>=1.20", "scipy>=1.6", "pandas>=1.2", "PyYAML>=5.3", "tqdm"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/JesusTorrado/extrapops"
+"Bug Tracker" = "https://github.com/JesusTorrado/extrapops/issues"

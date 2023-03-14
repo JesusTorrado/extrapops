@@ -1,0 +1,27 @@
+# Backups
+*~
+\#*
+.\#*
+
+# OS-specific
+.directory
+
+# Python and packaging
+*.pyc
+*.egg-info/
+build/
+dist/
+__pycache__
+.ipynb_checkpoints
+
+# Profiling
+*.prof
+
+# Examples
+examples/output
+
+# Tests
+.pytest_cache
+
+# IDE-specific
+.ide
