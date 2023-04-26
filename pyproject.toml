@@ -27,3 +27,6 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/JesusTorrado/extrapops"
 "Bug Tracker" = "https://github.com/JesusTorrado/extrapops/issues"
+
+[tool.setuptools]
+packages = ["extrapops"]
