@@ -77,6 +77,8 @@ def _snr_approx_factorless(chirp_mass, luminosity_distance, fmin, fmax, use_cach
     no_freqs_factor = (2 / np.pi**(2 / 3) * np.sqrt(5 / 96) *
                        (chirp_mass * const.G_m3_invkg_invs2)**(5 / 6) /
                        luminosity_distance * const.c_m_invs**(-3 / 2))
+    # 2 effective channels in TDI 1.5: multiply SNR**2 by 2
+    no_freqs_factor *= np.sqrt(2)
     if use_cache and not numerical:
         _cache_f_integral()
         integrator = lambda f_min, f_max: (
