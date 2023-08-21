@@ -17,9 +17,10 @@ lambda=p(z). This means that we can sample it as such, following 2 steps:
 
 """
 
+from copy import deepcopy
+from functools import partial
 import numpy as np
 from scipy import stats, interpolate, integrate
-from copy import deepcopy
 
 import extrapops.constants as const
 from extrapops.cosmology import diff_comoving_volume_re_z, _default_cosmo, \
@@ -56,7 +57,9 @@ _default_redshift_params["merger_rate_params"].update(_madau_fiducial_params)
 def R(z, model=_default_redshift_params["merger_rate_model"],
       params=_default_redshift_params["merger_rate_params"]):
     """Merger rate in GPc^-3 yr^-1 units."""
-    if model.lower() == "madau":
+    if callable(model):
+        return model(z)
+    elif model.lower() == "madau":
         return R_madau(z, **params)
     elif model.lower() == "power_law":
         return R_power_law(z, **params)
@@ -98,7 +101,7 @@ def _madau_safe_z_dependence(
     For negative ``d``, turns into a simple power law.
     """
     if c is not None:
-        raise NotImplemented("The 'safe' version of Madau cannot take 'c'.")
+        raise NotImplementedError("The 'safe' version of Madau cannot take 'c'.")
     if r > 0:
         raise ValueError("'r' must be negative.")
     if d <= 0:
@@ -181,11 +184,29 @@ def _check_cache_invCDF(T_yr, merger_rate_model, merger_rate_params, cosmo_param
         return False
     check_maybe_none = lambda a, b: (
         a == b if (a is None or b is None) else np.isclose(a, b))
-    if merger_rate_model != _invCDF_cache_params["merger_rate_model"] or \
-       not np.all([
-           check_maybe_none(merger_rate_params.get(p, None), cached_value)
-           for p, cached_value in _invCDF_cache_params["merger_rate_params"].items()]):
-        return False
+    if callable(merger_rate_model):
+        if not callable(_invCDF_cache_params["merger_rate_model"]):
+            return False
+        # Comparison of function with copy fails e.g. for partials -- Workaround:
+        if isinstance(merger_rate_model, partial):
+            if not isinstance(_invCDF_cache_params["merger_rate_model"], partial):
+                return False
+            if any(
+                    (getattr(merger_rate_model, attr) !=
+                     getattr(_invCDF_cache_params["merger_rate_model"], attr))
+                    for attr in ["func", "args", "keywords"]):
+                return False
+        # All other cases
+        elif merger_rate_model != _invCDF_cache_params["merger_rate_model"]:
+            return False
+    else:  # not callable
+        if merger_rate_model != _invCDF_cache_params["merger_rate_model"]:
+            return False
+        if not np.all([
+                check_maybe_none(merger_rate_params.get(p, None), cached_value)
+                for p, cached_value
+                in _invCDF_cache_params["merger_rate_params"].items()]):
+            return False
     if not np.all(
             np.isclose(cosmo_params[param], cached_value)
             for param, cached_value in _invCDF_cache_params["cosmo_params"].items()):
@@ -298,9 +319,9 @@ def sample_z(Nsamples=None, T_yr=_default_redshift_params["T_yr"],
     try:
         # numpy.empty does not actually take up mem, but fails if not available
         np.empty(Nsamples, dtype=float)
-    except MemoryError:
+    except MemoryError as excpt:
         raise MemoryError("Not enough memory for z sample. Reduce the merger rate, the "
-                          "redshift range or the total generation time.")
+                          "redshift range or the total generation time.") from excpt
     # Parallel implementation (disabled for now, since threads were not being closed
     # at KeyboardInterrupt
     # Nsamples_chunk = NUM_THREADS * [int(Nsamples / NUM_THREADS)]
