@@ -58,7 +58,10 @@ def R(z, model=_default_redshift_params["merger_rate_model"],
       params=_default_redshift_params["merger_rate_params"]):
     """Merger rate in GPc^-3 yr^-1 units."""
     if callable(model):
-        return model(z)
+        try:
+            return model(z, **(params or {}))
+        except TypeError as excpt:
+            raise TypeError(f"Error with custom callable merger rate: {excpt}") from excpt
     elif model.lower() == "madau":
         return R_madau(z, **params)
     elif model.lower() == "power_law":
@@ -202,11 +205,11 @@ def _check_cache_invCDF(T_yr, merger_rate_model, merger_rate_params, cosmo_param
     else:  # not callable
         if merger_rate_model != _invCDF_cache_params["merger_rate_model"]:
             return False
-        if not np.all([
-                check_maybe_none(merger_rate_params.get(p, None), cached_value)
-                for p, cached_value
-                in _invCDF_cache_params["merger_rate_params"].items()]):
-            return False
+    if not np.all([
+            check_maybe_none(merger_rate_params.get(p, None), cached_value)
+            for p, cached_value
+            in _invCDF_cache_params["merger_rate_params"].items()]):
+        return False
     if not np.all(
             np.isclose(cosmo_params[param], cached_value)
             for param, cached_value in _invCDF_cache_params["cosmo_params"].items()):
