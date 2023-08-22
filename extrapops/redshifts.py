@@ -208,7 +208,7 @@ def _check_cache_invCDF(T_yr, merger_rate_model, merger_rate_params, cosmo_param
     if not np.all([
             check_maybe_none(merger_rate_params.get(p, None), cached_value)
             for p, cached_value
-            in _invCDF_cache_params["merger_rate_params"].items()]):
+            in (_invCDF_cache_params["merger_rate_params"] or {}).items()]):
         return False
     if not np.all(
             np.isclose(cosmo_params[param], cached_value)
