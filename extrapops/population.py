@@ -20,6 +20,7 @@ from extrapops.background import char_strain_sq_single_at_f1Hz, avg_strain_squar
 from extrapops.sobbh_waveform import frequency_at_t, t_of_frequency
 from extrapops.snr import snr_avg_inclination, snr_max_inclination
 from extrapops.yaml import yaml_dump
+from extrapops.experiments import LISA
 
 _yaml_ext = ".yaml"
 _hdf_ext = ".h5"
@@ -77,37 +78,24 @@ class Population():
     """
     Class generating/loading and holding a SOBHB population.
 
-    All quantities are stored in the *source* reference frame, as oppossed to the detector
-    reference frame used by LISA (but taken into account when loading/saving in LISACode
-    format).
+    All quantities are stored in the *source* reference frame, as oppossed to the
+    detector's Solar System Barycenter reference frame (but taken into account when
+    loading/saving in LISACode format).
     """
 
-    def __init__(self, load=None, lazy=True,
-                 cosmo=_default_cosmo, redshift=_default_redshift_params,
-                 mass=_default_mass_params, spin=_default_spin_params,
-                 # Old argument names (raises warning)
-                 cosmo_params=None, redshift_params=None,
-                 mass_params=None, spin_params=None):
+    def __init__(
+            self, load=None, lazy=True,
+            cosmo=_default_cosmo, redshift=_default_redshift_params,
+            mass=_default_mass_params, spin=_default_spin_params,
+            experiment=LISA,
+    ):
         """
         Creates a realisation of a SOBHB population.
         """
+        self.experiment = experiment
         if load is not None:
             self._load(load)
         else:
-            # The next block should eventually be deprecated
-            if cosmo_params is not None:
-                cosmo = cosmo_params
-                warn("'cosmo_params' argument will be deprecated. Use simply 'cosmo'.")
-            if redshift_params is not None:
-                redshift = redshift_params
-                warn("'redshift_params' argument will be deprecated. Use simply 'redshift'.")
-            if mass_params is not None:
-                mass = mass_params
-                warn("'mass_params' argument will be deprecated. Use simply 'mass'.")
-            if spin_params is not None:
-                spin = spin_params
-                warn("'spin_params' argument will be deprecated. Use simply 'spin'.")
-            # End of deprecation block
             self._params = {"cosmo": deepcopy(_default_cosmo),
                             "redshift": deepcopy(_default_redshift_params),
                             "mass": deepcopy(_default_mass_params),
@@ -207,7 +195,8 @@ class Population():
         if is_computed and not force:
             return
         # Final frequency can be achieved during observation time if Tobs > Tcoal!
-        T_evol = np.clip(const.LISA_T_obs_yr / (1 + self.z), None, self._data["CoalTime"])
+        T_evol = np.clip(self.experiment.t_obs_yr_effective / (1 + self.z),
+                         None, self._data["CoalTime"])
         self._data["FinalFrequency"] = \
             frequency_at_t(self.M * const.Msun_kg, self._data["CoalTime"] * const.yr_s,
                            T_evol * const.yr_s)
@@ -215,12 +204,12 @@ class Population():
         # (redshifted to each individual event)
         # In practice, for LISA and the populations usually generated, the clipping to the
         # left of the bandwidth will never apply (but will on the right)
-        LISA_bandwith_source_frame = [const.LISA_bandwidth[0] * (1 + self.z),
-                                      const.LISA_bandwidth[1] * (1 + self.z)]
+        bandwith_source_frame = [self.experiment.bandwidth_Hz[0] * (1 + self.z),
+                                 self.experiment.bandwidth_Hz[1] * (1 + self.z)]
         self._data["InitialFrequency"] = np.clip(
-            self._data["InitialFrequency"], *LISA_bandwith_source_frame)
+            self._data["InitialFrequency"], *bandwith_source_frame)
         self._data["FinalFrequency"] = np.clip(
-            self._data["FinalFrequency"], *LISA_bandwith_source_frame)
+            self._data["FinalFrequency"], *bandwith_source_frame)
         self._data["InBandTime"] = (
             t_of_frequency(self.M * const.Msun_kg, self._data["CoalTime"] * const.yr_s,
                            self._data["FinalFrequency"]) -
@@ -414,7 +403,7 @@ class Population():
             new_data[col] = self._to_detector_refframe(col)
         return new_data
 
-    def add_snr_avg_inclination(self, T_obs_yr=const.LISA_T_obs_yr, use_cache=True):
+    def add_snr_avg_inclination(self):
         """
         Adds a column `snr_avg_inclination` with an approximate calculation of the SNR,
         averaging over possible inclinations of the given event.
@@ -426,7 +415,7 @@ class Population():
             self._to_detector_refframe("InitialFrequency"),
             self._to_detector_refframe("FinalFrequency"))
 
-    def add_snr_max_inclination(self, T_obs_yr=const.LISA_T_obs_yr, use_cache=True):
+    def add_snr_max_inclination(self):
         """
         Adds a column `snr_max_inclination` with an approximate calculation of the SNR,
         maximising over possible inclinations of the given event.
@@ -520,16 +509,14 @@ class Population():
             return func(f)
 
     def total_strain_squared_fbin(self, delta_f, f_min=None, f_max=None, subsample=1,
-                                  use="in", T_obs_yr=const.LISA_T_obs_yr,
-                                  progress_bar=False, omegah2_units=False):
+                                  use="in", progress_bar=False, omegah2_units=False):
         """
         Computes the expected background from the sum of individual strains, binned over
         frequencies with bin width `delta_f` (e.g. the inverse
         of the chunk length, ~11 days for LISA).
 
         Assigns to each event its initial frequency if ``use="in"`` (default), or its
-        final frequency if ``use="out"``, computed for an observation time in years of
-        `T_obs_yr` (default: 4 years).
+        final frequency if ``use="out"``, within the experiment's bandwidth.
 
         Ignoring drifting is a good approximation at low frequencies only, for the
         purpose of computing the gaussian f^(-4/3) part of the background.
